@@ -1,17 +1,29 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const AttendanceSchema = new mongoose.Schema({
-    attendanceId: {
-        type: String,
-        unique: true
-    },
     classId: {
-        type: mongoose.Schema.Types.ObjectId
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Class",
+        required: true
     },
     studentId: {
-        type: mongoose.Schema.Types.ObjectId
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true
     },
-    status: "present" | "absent"
-})
+    status:{
+        type: String,
+        enum: ["present", "absent"],
+        required: true
+    }
+}
+);
 
-export default mongoose.model("Attendance", AttendanceSchema, "attendance");
+AttendanceSchema.index(
+    {classId: 1, studentId: 1},
+    {unique: true}
+);
+
+const Attendance = mongoose.model("Attendance", AttendanceSchema);
+
+module.exports = Attendance;

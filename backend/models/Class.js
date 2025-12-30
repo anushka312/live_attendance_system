@@ -1,9 +1,10 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const ClassSchema = new mongoose.Schema({
     classId: {
         type: String,
-        unique: true
+        unique: true,
+        required: true
     },
     className: {
         type: String,
@@ -20,4 +21,4 @@ const ClassSchema = new mongoose.Schema({
     }]
 });
 
-export default mongoose.model("Class", ClassSchema, "classes");
+module.exports = mongoose.model("Class", ClassSchema, "classes");

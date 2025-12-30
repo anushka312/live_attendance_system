@@ -1,9 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const {registerUser, loginUser} = require("../controllers/userController");
+const {getStudents} = require("../controllers/userController");
+const auth = require("../middleware/auth");
+const isTeacher = require("../middleware/isTeacher");
 
-router.post("/register", registerUser);
-router.post("/login", loginUser);
+router.get("/students", auth, isTeacher, getStudents);
 
 //router.post("/create", auth, isTeacher, createClass);
 module.exports = router;
