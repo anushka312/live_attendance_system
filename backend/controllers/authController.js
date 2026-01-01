@@ -5,58 +5,108 @@ const { signupSchema, loginSchema } = require("../schemas/auth.schema");
 
 const signup = async (req, res) => {
   try {
-    const data = signupSchema.parse(req.body);
+    //  validate input
+    const parsed = signupSchema.parse(req.body);
 
-    const existingUser = await User.findOne({ email: data.email });
-    if (existingUser) {
+    const { name, email, password, role } = parsed;
+
+    const exists = await User.findOne({ email });
+    if (exists) {
       return res.status(400).json({
         success: false,
-        error: "Email already exists"
+        error: "User already exists"
       });
     }
 
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+    const hashed = await bcrypt.hash(password, 10);
 
     const user = await User.create({
-      ...data,
-      password: hashedPassword
+      name,            // FIXED
+      email,
+      password: hashed,
+      role
     });
 
-    res.status(201).json({
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    return res.status(201).json({
       success: true,
       data: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
+        token,
+        user: {
+          _id: user._id,
+          email: user.email,
+          role: user.role
+        }
       }
     });
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ success: false, error: "Server error" });
+    console.error(err);
+
+    // optional: better zod error
+    if (err.name === "ZodError") {
+      return res.status(400).json({
+        success: false,
+        error: err.errors
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: "Server error"
+    });
   }
 };
 
+
+
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = loginSchema.parse(req.body);
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ success: false, error: "Invalid email or password" });
-
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(400).json({ success: false, error: "Invalid email or password" });
-
-    if (!process.env.JWT_SECRET) {
-      return res.status(500).json({ success: false, error: "JWT secret not defined" });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: "Invalid credentials"
+      });
     }
 
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        error: "Invalid credentials"
+      });
+    }
 
-    res.status(200).json({ success: true, token });
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        token,
+        user: {
+          _id: user._id,
+          email: user.email,
+          role: user.role
+        }
+      }
+    });
   } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ success: false, error: "Server error" });
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      error: "Server error"
+    });
   }
 };
 
